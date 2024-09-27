@@ -4,34 +4,133 @@
 
 ### 1. **GORM介绍**
 
-- **目标**：理解 GORM 的用途及其在 Golang 项目中的价值。
+官网地址：https://gorm.io/zh_CN/docs/index.html
+
+GORM 提供了简单的 API，使得开发者可以使用 Go 语言的结构体来表示数据库表，减少了 SQL 语句的直接书写。
+
+GORM 是 Golang 项目中一个强大的工具，能够有效提升数据库操作的效率和可维护性。
+
 - **特性**：
+    
     * 全功能 ORM
     * Create，Save，Update，Delete，Find 中钩子方法
-- **内容概要**：GORM 基本操作、模型定义、数据库连接、CRUD 操作、高级功能等。
+    
+    * 事务，嵌套事务，Save Point，Rollback To Saved Point
+    * Auto Migration
 
 ---
 
 ### 2. **环境配置**
 
+* **项目结构**：
+
+​	初始化项目：
+
+```sh
+ go mod init github.com/zhang1github2test/gorm-learning
+```
+
+建立如下目录：
+
+```txt
+E:.
+│  go.mod
+│  go.sum
+│  README.md
+├─cmd
+│  └─myapp
+│          main.go
+│
+├─database
+│      db.go
+│
+├─model
+└─repository
+```
+
+- **数据库准备**：使用 Docker安装mysql数据库，见《docker安装mysql.md》
+
 - **依赖安装**：GORM 和数据库驱动（如 MySQL、PostgreSQL）。
-- **数据库准备**：使用 Docker 或本地数据库设置。
-- **项目结构**：
-    - 介绍典型的 Go 项目结构，包括 `models/`、`database/`、`repository/` 等文件夹。
+
+    ```sh
+     go get -u gorm.io/gorm
+     go get -u gorm.io/driver/mysql
+    ```
+
+    
 
 ---
 
 ### 3. **GORM 基本操作**
 
 - **数据库连接**：
+    
     - 使用 GORM 连接数据库，演示 DSN 字符串的配置。
+    
+      ```go
+      package database
+      
+      import (
+      	"fmt"
+      	"gorm.io/driver/mysql"
+      	"gorm.io/gorm"
+      )
+      
+      var GLOBALDB *gorm.DB
+      
+      func init() {
+      	var err error
+      	// 参考 https://github.com/go-sql-driver/mysql#dsn-data-source-name 获取详情
+      	dsn := "root:my-secret-pw@tcp(192.168.188.101:3306)/test?charset=utf8mb4&parseTime=True&loc=Local"
+      	GLOBALDB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+      	if err != nil {
+      		panic(err)
+      	}
+      	sqlDB, err := GLOBALDB.DB()
+      	fmt.Println(sqlDB.Stats())
+      
+      }
+      ```
+    
+      
 - **模型定义**：
-    - 如何定义模型及其与数据库表的映射（字段类型、标签）。
+    
+    - 如何定义模型及其与数据库表的映射（字段类型、标签）
+    
+      ```go
+      type User struct {
+        ID           uint           // Standard field for the primary key
+        Name         string         // 一个常规字符串字段
+        Email        *string        // 一个指向字符串的指针, allowing for null values
+        Age          uint8          // 一个未签名的8位整数
+        Birthday     *time.Time     // A pointer to time.Time, can be null
+        MemberNumber sql.NullString // Uses sql.NullString to handle nullable strings
+        ActivatedAt  sql.NullTime   // Uses sql.NullTime for nullable time fields
+        CreatedAt    time.Time      // 创建时间（由GORM自动管理）
+        UpdatedAt    time.Time      // 最后一次更新时间（由GORM自动管理）
+      }
+      ```
+    
+      ### 约定
+    
+      1. **主键**：GORM 使用一个名为`ID` 的字段作为每个模型的默认主键。
+      2. **表名**：默认情况下，GORM 将结构体名称转换为 `snake_case` 并为表名加上复数形式。 例如，一个 `User` 结构体在数据库中的表名变为 `users` 。
+      3. **列名**：GORM 自动将结构体字段名称转换为 `snake_case` 作为数据库中的列名。
+      4. **时间戳字段**：GORM使用字段 `CreatedAt` 和 `UpdatedAt` 来自动跟踪记录的创建和更新时间。
 - **CRUD 操作**：
     - **Create**：插入单条和多条记录。
+    
+      
+    
     - **Read**：查询单条、多条记录，条件查询、分页、排序。
+    
     - **Update**：更新单个字段和多个字段。
-    - **Delete**：删除记录（软删除与硬删除）。
+    
+    - **Delete**：删除记录（软删除与硬删除）
+
+* GORM配置：
+  * 连接池配置
+  * 
 
 
 
@@ -42,7 +141,11 @@
 - **自动迁移**：使用 `AutoMigrate` 生成和更新数据库表。
 - **事务处理**：GORM 事务的使用，回滚与提交操作。
 - **钩子（Hooks）**：Before/After 钩子的使用场景和实现方式。
-- **预加载与关联查询**：优化关联查询，减少 N+1 查询。
+- **多数据库** ：Database Resolver
+- **读写分离**: Database Resolver
+- **自定义插件**
+- **自定义 Logger**
+- 
 
 ---
 
