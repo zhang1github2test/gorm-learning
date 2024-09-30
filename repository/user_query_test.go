@@ -8,16 +8,18 @@ import (
 	"time"
 )
 
+type fields struct {
+	Db *gorm.DB
+}
+type args struct {
+	user *model.User
+}
+
+var field = fields{
+	Db: database.GLOBALDB,
+}
+
 func TestUserDao_Create(t *testing.T) {
-	type fields struct {
-		Db *gorm.DB
-	}
-	type args struct {
-		user *model.User
-	}
-	field := fields{
-		Db: database.GLOBALDB,
-	}
 	email := "89954554554@163.com"
 	birthday := time.Now().AddDate(-18, 0, 0)
 
@@ -73,16 +75,6 @@ func TestUserDao_Create(t *testing.T) {
 }
 
 func TestUserDao_Save(t *testing.T) {
-	type fields struct {
-		Db *gorm.DB
-	}
-	type args struct {
-		user *model.User
-	}
-
-	field := fields{
-		Db: database.GLOBALDB,
-	}
 	email := "89954554554@163.com"
 	birthday := time.Now().AddDate(-18, 0, 0)
 
@@ -138,21 +130,14 @@ func TestUserDao_Save(t *testing.T) {
 }
 
 func TestUserDao_CreateInBatches(t *testing.T) {
-	type fields struct {
-		Db *gorm.DB
-	}
 	type args struct {
 		users     *[]model.User
 		batchSize int
 	}
-	us := []model.User{{ID: 100003,
-		Name: "zhangshenglu1"}, {Name: "zhangshenglu2"}, {Name: "zhangshenglu3"}}
+	us := []model.User{{Name: "zhangshenglu1"}, {Name: "zhangshenglu2"}, {Name: "zhangshenglu3"}}
 	arg := args{
 		users:     &us,
-		batchSize: 2,
-	}
-	field := fields{
-		Db: database.GLOBALDB,
+		batchSize: 100,
 	}
 	tests := []struct {
 		name    string
@@ -181,6 +166,600 @@ func TestUserDao_CreateInBatches(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("CreateInBatches() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserDao_First(t *testing.T) {
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:   "First",
+			fields: field,
+			args: args{
+				user: &model.User{},
+			},
+			want:    1,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			got, err := userDao.First(tt.args.user)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("First() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("First() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserDao_Take(t *testing.T) {
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:   "Take_test",
+			fields: field,
+			args: args{
+				user: &model.User{},
+			},
+			want:    1,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			got, err := userDao.Take(tt.args.user)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Take() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Take() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserDao_Last(t *testing.T) {
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:   "Last",
+			fields: field,
+			args: args{
+				user: &model.User{},
+			},
+			want:    1,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			got, err := userDao.Last(tt.args.user)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Last() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Last() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserDao_Find(t *testing.T) {
+	type args struct {
+		users *[]model.User
+	}
+	us := &[]model.User{}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:   "Find",
+			fields: field,
+			args: args{
+				users: us,
+			},
+			want:    24,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			got, err := userDao.Find(tt.args.users)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Find() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Find() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+
+}
+
+func TestUserDao_Scan(t *testing.T) {
+	type args struct {
+		users *[]model.User
+	}
+	us := []model.User{}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:   "Scan",
+			fields: field,
+			args: args{
+				users: &us,
+			},
+			want:    24,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			got, err := userDao.Scan(tt.args.users)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Scan() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Scan() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserDao_SelectSpecField(t *testing.T) {
+	type args struct {
+		users *[]model.User
+	}
+	us := []model.User{}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:   "SelectSpecField",
+			fields: field,
+			args: args{
+				users: &us,
+			},
+			want:    24,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			got, err := userDao.SelectSpecField(tt.args.users, "name")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SelectSpecField() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("SelectSpecField() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserDao_StringQuery(t *testing.T) {
+	type args struct {
+		users *[]model.User
+	}
+	us := []model.User{}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:   "TestUserDao_StringQuery",
+			fields: field,
+			args: args{
+				users: &us,
+			},
+			want:    24,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			got, err := userDao.StringQuery(tt.args.users)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("StringQuery() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("StringQuery() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserDao_StructQuery(t *testing.T) {
+	type args struct {
+		users *[]model.User
+		user  *model.User
+	}
+
+	us := []model.User{}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:   "id_exist",
+			fields: field,
+			args: args{
+				users: &us,
+				user: &model.User{
+					ID: 100003,
+				},
+			},
+			want:    1,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			got, err := userDao.StructQuery(tt.args.users, tt.args.user)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("StructQuery() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("StructQuery() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserDao_MapQuery(t *testing.T) {
+	type args struct {
+		users *[]model.User
+	}
+
+	us := []model.User{}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:   "MapQuery",
+			fields: field,
+			args: args{
+				users: &us,
+			},
+			want:    8,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			got, err := userDao.MapQuery(tt.args.users)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MapQuery() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("MapQuery() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserDao_NotQuery(t *testing.T) {
+
+	type args struct {
+		users *[]model.User
+		user  *model.User
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name:   "not_equal",
+			fields: field,
+			args: args{
+				users: &[]model.User{},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userDao.NotQuery(tt.args.users); (err != nil) != tt.wantErr {
+				t.Errorf("NotQuery() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_OrQuery(t *testing.T) {
+	type args struct {
+		users *[]model.User
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name:   "or_query",
+			fields: field,
+			args: args{
+				users: &[]model.User{},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userDao.OrQuery(tt.args.users); (err != nil) != tt.wantErr {
+				t.Errorf("OrQuery() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_Order(t *testing.T) {
+	type args struct {
+		users *[]model.User
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name:   "order",
+			fields: field,
+			args: args{
+				users: &[]model.User{},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userdao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userdao.Order(tt.args.users); (err != nil) != tt.wantErr {
+				t.Errorf("Order() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_Group(t *testing.T) {
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name:    "group",
+			fields:  field,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userdao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userdao.Group(); (err != nil) != tt.wantErr {
+				t.Errorf("Group() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_Having(t *testing.T) {
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name:    "group",
+			fields:  field,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userdao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userdao.Having(); (err != nil) != tt.wantErr {
+				t.Errorf("Having() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_PageQuery(t *testing.T) {
+	type args struct {
+		offset int
+		limit  int
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name:   "page_Query",
+			fields: field,
+			args: args{
+				offset: 10,
+				limit:  10,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userdao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userdao.PageQuery(tt.args.offset, tt.args.limit); (err != nil) != tt.wantErr {
+				t.Errorf("PageQuery() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_UpdateSingle(t *testing.T) {
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name:    "updateSingle",
+			fields:  field,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userDao.UpdateSingle(); (err != nil) != tt.wantErr {
+				t.Errorf("UpdateSingle() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_Updates(t *testing.T) {
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name:    "Updates",
+			fields:  field,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userDao.Updates(); (err != nil) != tt.wantErr {
+				t.Errorf("Updates() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_Delete(t *testing.T) {
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name:    "Delete",
+			fields:  field,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userDao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userDao.Delete(); (err != nil) != tt.wantErr {
+				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
