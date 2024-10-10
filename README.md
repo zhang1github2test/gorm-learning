@@ -877,12 +877,19 @@ func (userDao *UserDao) Updates() error {
 		Name: "zhangshenglu3",
 		Age:  18,
 	})
-	
+
 	// 使用select 来选择需要更新的字段
 	// UPDATE `users` SET `name`='zhangshenglu3',`updated_at`='2024-09-30 17:02:48.623' WHERE id = 100003
 	tx = userDao.Db.Table("users").Select("name").Where("id = ?", 100003).Updates(&model.User{
 		Name: "zhangshenglu3",
 		Age:  18,
+	})
+	
+	
+	// 使用map结构更新   UPDATE `users` SET `name`='zhangshenglu4',`updated_at`='2024-09-30 17:23:06.757' WHERE id = 100003
+	tx = userDao.Db.Model(&model.User{}).Select("name").Where("id = ?", 100003).Updates(map[string]interface{}{
+		"name": "zhangshenglu4",
+		"age":  22,
 	})
 	return tx.Error
 }
@@ -892,25 +899,41 @@ func (userDao *UserDao) Updates() error {
 
 ##### Delete操作
 
-删除记录（软删除与硬删除）
+`Delete` 方法用于从数据库中删除记录。可以根据主键或指定的条件删除一条或多条记录
 
-* GORM配置：
-  * 连接池配置
-  * 
+```go
+func (userDao *UserDao) Delete() error {
+	user := model.User{
+		ID: 100003,
+	}
+	// 基于主键删除
+	// DELETE FROM `users` WHERE `users`.`id` = 100003
+	tx := userDao.Db.Delete(user)
+	
+	// 基于查询条件删除所有匹配到的数据
+	// DELETE FROM `users` WHERE name like '%zhangshenglu%'
+	tx = userDao.Db.Where("name like ?", "%zhangshenglu%").Delete(&model.User{})
+	return tx.Error
+}
+```
 
-#### 模型定义：
+
+
+
+
+#### 模型定义
 
 - 如何定义模型及其与数据库表的映射（字段类型、标签）
 
   ```go
   type User struct {
-    ID           uint           // Standard field for the primary key
-    Name         string         // 一个常规字符串字段
-    Email        *string        // 一个指向字符串的指针, allowing for null values
-    Age          uint8          // 一个未签名的8位整数
-    Birthday     *time.Time     // A pointer to time.Time, can be null
-    CreatedAt    *time.Time      // 创建时间（由GORM自动管理）
-    UpdatedAt    *time.Time      // 最后一次更新时间（由GORM自动管理）
+  	ID        uint       `gorm:"type:int;comment:主键"`   // Standard field for the primary key
+  	Name      string     `gorm:"size:128;comment:人员姓名"` // 一个常规字符串字段
+  	Email     *string    `gorm:"size:128;comment:邮箱地址"` // 一个指向字符串的指针, allowing for null values
+  	Age       uint8      // 一个未签名的8位整数
+  	Birthday  *time.Time // A pointer to time.Time, can be null
+  	CreatedAt *time.Time // 创建时间（由GORM自动管理）
+  	UpdatedAt *time.Time // 最后一次更新时间（由GORM自动管理）
   }
   ```
 
@@ -921,18 +944,168 @@ func (userDao *UserDao) Updates() error {
   3. **列名**：GORM 自动将结构体字段名称转换为 `snake_case` 作为数据库中的列名。
   4. **时间戳字段**：GORM使用字段 `CreatedAt` 和 `UpdatedAt` 来自动跟踪记录的创建和更新时间。
 
+  | 标签名                 | 说明                                                         |
+  | :--------------------- | :----------------------------------------------------------- |
+  | column                 | 指定 db 列名                                                 |
+  | type                   | 列数据类型，推荐使用兼容性好的通用类型，例如：所有数据库都支持 bool、int、uint、float、string、time、bytes 并且可以和其他标签一起使用，例如：`not null`、`size`, `autoIncrement`… 像 `varbinary(8)` 这样指定数据库数据类型也是支持的。在使用指定数据库数据类型时，它需要是完整的数据库数据类型，如：`MEDIUMINT UNSIGNED not NULL AUTO_INCREMENT` |
+  | serializer             | 指定将数据序列化或反序列化到数据库中的序列化器, 例如: `serializer:json/gob/unixtime` |
+  | size                   | 定义列数据类型的大小或长度，例如 `size: 256`                 |
+  | primaryKey             | 将列定义为主键                                               |
+  | unique                 | 将列定义为唯一键                                             |
+  | default                | 定义列的默认值                                               |
+  | precision              | 指定列的精度                                                 |
+  | scale                  | 指定列大小                                                   |
+  | not null               | 指定列为 NOT NULL                                            |
+  | autoIncrement          | 指定列为自动增长                                             |
+  | autoIncrementIncrement | 自动步长，控制连续记录之间的间隔                             |
+  | embedded               | 嵌套字段                                                     |
+  | embeddedPrefix         | 嵌入字段的列名前缀                                           |
+  | autoCreateTime         | 创建时追踪当前时间，对于 `int` 字段，它会追踪时间戳秒数，您可以使用 `nano`/`milli` 来追踪纳秒、毫秒时间戳，例如：`autoCreateTime:nano` |
+  | autoUpdateTime         | 创建/更新时追踪当前时间，对于 `int` 字段，它会追踪时间戳秒数，您可以使用 `nano`/`milli` 来追踪纳秒、毫秒时间戳，例如：`autoUpdateTime:milli` |
+  | index                  | 根据参数创建索引，多个字段使用相同的名称则创建复合索引，查看 [索引](https://gorm.io/zh_CN/docs/indexes.html) 获取详情 |
+  | uniqueIndex            | 与 `index` 相同，但创建的是唯一索引                          |
+  | check                  | 创建检查约束，例如 `check:age > 13`，查看 [约束](https://gorm.io/zh_CN/docs/constraints.html) 获取详情 |
+  | <-                     | 设置字段写入的权限， `<-:create` 只创建、`<-:update` 只更新、`<-:false` 无写入权限、`<-` 创建和更新权限 |
+  | ->                     | 设置字段读的权限，`->:false` 无读权限                        |
+  | -                      | 忽略该字段，`-` 表示无读写，`-:migration` 表示无迁移权限，`-:all` 表示无读写迁移权限 |
+  | comment                | 迁移时为字段添加注释                                         |
+
 ---
 
 ### 5. **GORM 高级功能**
 
-- **自动迁移**：使用 `AutoMigrate` 生成和更新数据库表。
-- **事务处理**：GORM 事务的使用，回滚与提交操作。
-- **钩子（Hooks）**：Before/After 钩子的使用场景和实现方式。
-- **多数据库** ：Database Resolver
-- **读写分离**: Database Resolver
-- **自定义插件**
-- **自定义 Logger**
-- 
+##### **自动迁移**：使用 `AutoMigrate` 生成和更新数据库表
+
+`AutoMigrate` 方法用于自动创建或更新数据库中的表结构，使其与模型结构保持同步。它会根据模型定义的字段和关系生成表格、添加或修改列，但不会删除已存在的列或更改其数据类型。`AutoMigrate` 可以帮助确保数据库结构与代码中的模型保持一致。
+
+将上面使用到的User模型，增加一个手机号码字段。然后调用AutoMigrate方法进行表结构更新。
+
+```go
+type User struct {
+	ID        uint       `gorm:"type:int;comment:主键"`   // Standard field for the primary key
+	Name      string     `gorm:"size:128;comment:人员姓名"` // 一个常规字符串字段
+	Email     *string    `gorm:"size:128;comment:邮箱地址"` // 一个指向字符串的指针, allowing for null values
+	Age       uint8      // 一个未签名的8位整数
+	Phone     string     `gorm:"size:11;comment:手机号码"` // 手机号码
+	Birthday  *time.Time // A pointer to time.Time, can be null
+	CreatedAt *time.Time // 创建时间（由GORM自动管理）
+	UpdatedAt *time.Time // 最后一次更新时间（由GORM自动管理）
+}
+```
+
+示例代码：
+
+```go
+func (userdao *UserDao) AutoMigrate() error {
+	return userdao.Db.AutoMigrate(&model.User{})
+}
+```
+
+调用上面的函数能够完成自动给表结构增加一个Phone字段。运行后会有类似下面的sql输出
+
+```sql
+ALTER TABLE `users` ADD `phone` varchar(11) COMMENT '手机号码'
+```
+
+##### **事务处理**：GORM 事务的使用，回滚与提交操作
+
+自动事务：
+
+```go
+func (userdao *UserDao) Transaction(f func(tx *gorm.DB, parm interface{}) error, parm interface{}) error {
+	return userdao.Db.Transaction(func(tx *gorm.DB) error {
+		return f(tx, parm)
+	})
+}
+```
+
+上面的代码中，如果函数f的返回值 error不为nil，那么对数据库进行的操作将会被回滚。
+
+手动事务：
+
+```go
+
+func (userdao *UserDao) SaveWithTransactionByManual(user *model.User, rollback bool) error {
+	db := userdao.Db
+	//开启事务
+	db.Begin()
+	db.Save(user)
+	if rollback {
+		// 模拟出现异常,进行数据回滚
+		db.Rollback()
+		return errors.New("发生异常，将数据进行回滚!")
+	}
+
+	// 成功执行，提交事务
+	db.Commit()
+	return nil
+}
+```
+
+上面的代码演示在roolback为真的时候，会对相应的操作进行回滚操作。否则进行提交。
+
+##### context
+
+ORM 的上下文支持由 `WithContext` 方法启用，是一项强大的功能，可以增强 Go 应用程序中数据库操作的灵活性和控制力。 它允许在不同的操作模式、超时设置以及甚至集成到钩子/回调和中间件中进行上下文管理。
+
+* 单会话模式
+* 连续会话模式
+* 
+
+##### **钩子（Hooks）**：Before/After 钩子的使用场景和实现方式
+
+* 创建的时候的钩子
+
+  ```txt
+  // 开始事务
+  BeforeSave
+  BeforeCreate
+  // 关联前的 save
+  // 插入记录至 db
+  // 关联后的 save
+  AfterCreate
+  AfterSave
+  // 提交或回滚事务
+  
+  ```
+
+  ```go
+  func (u *User) BeforeSave(tx *gorm.DB) error{
+  	log.Println("BeforeSave ...")
+  	return nil
+  } 
+  
+  func (u *User) AfterSave(tx *gorm.DB) error{
+  	log.Println("AfterSave ...")
+  	return nil
+  }
+  
+  
+  func (u *User) BeforeCreate(tx *gorm.DB) error{
+  	log.Println("AfterCreate ...")
+  	return nil
+  }
+  func (u *User) AfterCreate(tx *gorm.DB) error{
+  	log.Println("AfterCreate ...")
+  	return nil
+  }
+  ```
+
+  
+
+* 更新时候的钩子
+
+* 查询时候的钩子
+
+* 删除时候的钩子
+
+##### **多数据库** ：Database Resolver
+
+##### **读写分离**: Database Resolver
+
+##### **自定义插件**
+
+##### **自定义 Logger**
 
 ---
 

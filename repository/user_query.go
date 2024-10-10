@@ -1,9 +1,12 @@
 package repository
 
 import (
+	"context"
+	"errors"
 	"github.com/zhang1github2test/gorm-learning/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"time"
 )
 
 type UserDao struct {
@@ -196,7 +199,6 @@ func (userDao *UserDao) Updates() error {
 }
 
 // 更新相关操作结束
-
 func (userDao *UserDao) Delete() error {
 	user := model.User{
 		ID: 100003,
@@ -210,5 +212,56 @@ func (userDao *UserDao) Delete() error {
 	//tx = userDao.Db.Where("name like ?", "%zhangshenglu%").Delete(&model.User{})
 	re := clause.Returning{Columns: []clause.Column{{Name: "name"}}}
 	tx = userDao.Db.Clauses(&re).Where("name like ?", "%zhangshenglu%").Delete(&model.User{})
+	return tx.Error
+}
+
+func (userdao *UserDao) AutoMigrate() error {
+	return userdao.Db.AutoMigrate(&model.User{})
+}
+
+func (userdao *UserDao) Transaction(f func(tx *gorm.DB, parm interface{}) error, parm interface{}) error {
+	return userdao.Db.Transaction(func(tx *gorm.DB) error {
+		return f(tx, parm)
+	})
+}
+
+func (userdao *UserDao) SaveWithTransactionByManual(user *model.User, rollback bool) error {
+	db := userdao.Db
+	//开启事务
+	db.Begin()
+	db.Save(user)
+	if rollback {
+		// 模型出现异常,进行数据回滚
+		db.Rollback()
+		return errors.New("发生异常，将数据进行回滚!")
+	}
+
+	// 成功执行，提交事务
+	db.Commit()
+	return nil
+}
+
+// SingleSessionContext 单会话模式使用Context示例
+func (userdao *UserDao) SingleSessionContext(user *model.User) error {
+	// 设置查询的时候超时时间
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	// 设置其他的上下文信息
+	ctx = context.WithValue(ctx, "pageSize", 10)
+	defer cancel()
+	tx := userdao.Db.WithContext(ctx).First(user)
+	return tx.Error
+}
+
+// SessionContext 持续会话模式使用Context示例
+func (userdao *UserDao) SessionContext(user *model.User) error {
+	// 设置查询的时候超时时间
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+	// 设置其他的上下文信息
+	ctx = context.WithValue(ctx, "pageSize", 10)
+	defer cancel()
+
+	tx := userdao.Db.WithContext(ctx)
+	tx.First(user)
+	tx.First(&model.User{})
 	return tx.Error
 }

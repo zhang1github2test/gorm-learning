@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"github.com/zhang1github2test/gorm-learning/database"
 	"github.com/zhang1github2test/gorm-learning/model"
 	"gorm.io/gorm"
@@ -24,7 +25,7 @@ func TestUserDao_Create(t *testing.T) {
 	birthday := time.Now().AddDate(-18, 0, 0)
 
 	user := &model.User{
-		ID:       100003,
+		ID:       100014,
 		Name:     "zhangshenglu",
 		Email:    &email,
 		Age:      18,
@@ -760,6 +761,222 @@ func TestUserDao_Delete(t *testing.T) {
 			}
 			if err := userDao.Delete(); (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_AutoMigrate(t *testing.T) {
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name:    "automigrate",
+			fields:  field,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userdao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userdao.AutoMigrate(); (err != nil) != tt.wantErr {
+				t.Errorf("AutoMigrate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_Transaction(t *testing.T) {
+	email := "89954554554@163.com"
+	birthday := time.Now().AddDate(-18, 0, 0)
+
+	user := &model.User{
+		ID:       100003,
+		Name:     "zhangshenglu",
+		Email:    &email,
+		Age:      18,
+		Phone:    "18454612132",
+		Birthday: &birthday,
+	}
+
+	user2 := &model.User{
+		ID:       100004,
+		Name:     "zhangshenglu",
+		Email:    &email,
+		Age:      18,
+		Phone:    "18454612132",
+		Birthday: &birthday,
+	}
+	type args struct {
+		f    func(tx *gorm.DB, parm interface{}) error
+		parm interface{}
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name:   "commit",
+			fields: field,
+			args: args{
+				f: func(tx *gorm.DB, parm interface{}) error {
+					tx.Save(parm)
+					return nil
+				},
+				parm: user,
+			},
+			wantErr: false,
+		},
+		{
+			name:   "rollback",
+			fields: field,
+			args: args{
+				f: func(tx *gorm.DB, parm interface{}) error {
+					tx.Save(parm)
+					return errors.New("模拟发生错误")
+				},
+				parm: user2,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userdao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userdao.Transaction(tt.args.f, tt.args.parm); (err != nil) != tt.wantErr {
+				t.Errorf("Transaction() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_SaveWithTransactionByManual(t *testing.T) {
+	email := "89954554554@163.com"
+	birthday := time.Now().AddDate(-18, 0, 0)
+
+	user := &model.User{
+		ID:       100006,
+		Name:     "zhangshenglu",
+		Email:    &email,
+		Age:      18,
+		Phone:    "18454612132",
+		Birthday: &birthday,
+	}
+
+	user2 := &model.User{
+		ID:       100007,
+		Name:     "zhangshenglu",
+		Email:    &email,
+		Age:      18,
+		Phone:    "18454612132",
+		Birthday: &birthday,
+	}
+	type args struct {
+		user     *model.User
+		rollback bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "commit",
+			wantErr: false,
+			fields:  field,
+			args: args{
+				user:     user,
+				rollback: false,
+			},
+		},
+		{
+			name:    "rollback",
+			wantErr: true,
+			fields:  field,
+			args: args{
+				user:     user2,
+				rollback: true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userdao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userdao.SaveWithTransactionByManual(tt.args.user, tt.args.rollback); (err != nil) != tt.wantErr {
+				t.Errorf("SaveWithTransactionByManual() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_SingleSessionContext(t *testing.T) {
+	user := &model.User{}
+	type args struct {
+		user *model.User
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name:   "SingleSession",
+			fields: field,
+			args: args{
+				user: user,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userdao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userdao.SingleSessionContext(tt.args.user); (err != nil) != tt.wantErr {
+				t.Errorf("SingleSessionContext() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserDao_SessionContext(t *testing.T) {
+	user := &model.User{}
+	type args struct {
+		user *model.User
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name:   "SessionContext",
+			fields: field,
+			args: args{
+				user: user,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userdao := &UserDao{
+				Db: tt.fields.Db,
+			}
+			if err := userdao.SessionContext(tt.args.user); (err != nil) != tt.wantErr {
+				t.Errorf("SessionContext() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
