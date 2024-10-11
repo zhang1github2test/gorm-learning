@@ -1049,10 +1049,86 @@ func (userdao *UserDao) SaveWithTransactionByManual(user *model.User, rollback b
 ORM 的上下文支持由 `WithContext` 方法启用，是一项强大的功能，可以增强 Go 应用程序中数据库操作的灵活性和控制力。 它允许在不同的操作模式、超时设置以及甚至集成到钩子/回调和中间件中进行上下文管理。
 
 * 单会话模式
+
+  ```txt
+  // SingleSessionContext 单会话模式使用Context示例
+  func (userdao *UserDao) SingleSessionContext(user *model.User) error {
+  	// 设置查询的时候超时时间
+  	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+  	// 设置其他的上下文信息
+  	ctx = context.WithValue(ctx, "pageSize", 10)
+  	defer cancel()
+  	tx := userdao.Db.WithContext(ctx).First(user)
+  	return tx.Error
+  }
+  
+  func TestUserDao_SingleSessionContext(t *testing.T) {
+  	user := &model.User{}
+  	type args struct {
+  		user *model.User
+  	}
+  	tests := []struct {
+  		name    string
+  		fields  fields
+  		args    args
+  		wantErr bool
+  	}{
+  		{
+  			name:   "SingleSession",
+  			fields: field,
+  			args: args{
+  				user: user,
+  			},
+  		},
+  	}
+  	for _, tt := range tests {
+  		t.Run(tt.name, func(t *testing.T) {
+  			userdao := &UserDao{
+  				Db: tt.fields.Db,
+  			}
+  			if err := userdao.SingleSessionContext(tt.args.user); (err != nil) != tt.wantErr {
+  				t.Errorf("SingleSessionContext() error = %v, wantErr %v", err, tt.wantErr)
+  			}
+  		})
+  	}
+  }
+  ```
+
+  ```txt
+  === RUN   TestUserDao_SingleSessionContext/SingleSession
+  2024/10/10 15:28:33 AfterFind pageSize:10,ok:true
+  
+  2024/10/10 15:28:33 E:/go/gorm-learning/repository/user_query.go:249
+  [13.000ms] [rows:1] SELECT * FROM `users` ORDER BY `users`.`id` LIMIT 1
+  --- PASS: TestUserDao_SingleSessionContext (0.01s)
+      --- PASS: TestUserDao_SingleSessionContext/SingleSession (0.01s)
+  ```
+
 * 连续会话模式
-* 
+
+  ```go
+  // SessionContext 持续会话模式使用Context示例
+  func (userdao *UserDao) SessionContext(user *model.User) error {
+  	// 设置查询的时候超时时间
+  	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+  	// 设置其他的上下文信息
+  	ctx = context.WithValue(ctx, "pageSize", 10)
+  	defer cancel()
+  
+  	tx := userdao.Db.WithContext(ctx)
+  	tx.First(user)
+  	tx.First(&model.User{})
+  	return tx.Error
+  }
+  ```
 
 ##### **钩子（Hooks）**：Before/After 钩子的使用场景和实现方式
+
+​	Hook 是在创建、查询、更新、删除等操作之前、之后调用的函数。
+
+​	如果您已经为模型定义了指定的方法，它会在创建、更新、查询、删除时自动被调用。如果任何回调返回错误，GORM 将停止后续的操作并回滚事务。
+
+
 
 * 创建的时候的钩子
 
@@ -1095,13 +1171,113 @@ ORM 的上下文支持由 `WithContext` 方法启用，是一项强大的功能�
 
 * 更新时候的钩子
 
+  更新的钩子有
+
+  ```go
+  type BeforeUpdateInterface interface {
+  	BeforeUpdate(*gorm.DB) error
+  }
+  
+  type AfterUpdateInterface interface {
+  	AfterUpdate(*gorm.DB) error
+  }
+  ```
+
+  ```go
+  func (u *User) BeforeUpdate(tx *gorm.DB) (err error) {
+  	if u.CreatedAt != nil {
+  		u.CreatedAt = nil
+  	}
+  	return nil
+  }
+  
+  func (u *User) AfterUpdate(tx *gorm.DB) error {
+  	log.Println("BeforeSave ...")
+  	return nil
+  }
+  
+  ```
+
 * 查询时候的钩子
+
+  ```go
+  type AfterFindInterface interface {
+  	AfterFind(*gorm.DB) error
+  }
+  ```
+
+  ```
+  func (u *User) AfterFind(tx *gorm.DB) error {
+      ctx := tx.Statement.Context
+      s, ok := ctx.Value("pageSize").(int)
+      log.Printf("AfterFind pageSize:%v,ok:%v", s, ok)
+      return nil
+  }
+  ```
 
 * 删除时候的钩子
 
+  ```go
+  type BeforeDeleteInterface interface {
+  	BeforeDelete(*gorm.DB) error
+  }
+  
+  type AfterDeleteInterface interface {
+  	AfterDelete(*gorm.DB) error
+  }
+  ```
+
+  ```go
+  func (u *User) AfterDelete(tx *gorm.DB) error {
+  	log.Println("AfterDelete ...")
+  	return nil
+  }
+  
+  func (u *User) BeforeDelete(tx *gorm.DB) error {
+  	log.Println("BeforeDelete ...")
+  	return nil
+  }
+  ```
+
 ##### **多数据库** ：Database Resolver
 
+```
+	GLOBALDB.Use(dbresolver.Register(dbresolver.Config{
+		Sources:  []gorm.Dialector{mysql.Open(dsn)},
+		Replicas: []gorm.Dialector{mysql.Open(dsn2)},
+		// sources/replicas load balancing policy
+		Policy: dbresolver.RandomPolicy{},
+		// print sources/replicas mode in logger
+		TraceResolverMode: true,
+	}).Register(dbresolver.Config{
+		Sources: []gorm.Dialector{mysql.Open(dsn2)},
+		//Replicas: []gorm.Dialector{mysql.Open(dsn2)},
+		// sources/replicas load balancing policy
+		Policy: dbresolver.RandomPolicy{},
+		// print sources/replicas mode in logger
+		TraceResolverMode: true,
+	}, &model.Student{}))
+```
+
 ##### **读写分离**: Database Resolver
+
+```go
+	GLOBALDB.Use(dbresolver.Register(dbresolver.Config{
+		Sources:  []gorm.Dialector{mysql.Open(dsn)},
+		Replicas: []gorm.Dialector{mysql.Open(dsn2)},
+		// sources/replicas load balancing policy
+		Policy: dbresolver.RandomPolicy{},
+		// print sources/replicas mode in logger
+		TraceResolverMode: true,
+	}).Register(dbresolver.Config{
+		Sources: []gorm.Dialector{mysql.Open(dsn2)},
+		//Replicas: []gorm.Dialector{mysql.Open(dsn2)},
+		// sources/replicas load balancing policy
+		Policy: dbresolver.RandomPolicy{},
+		// print sources/replicas mode in logger
+		TraceResolverMode: true,
+	}, &model.Student{}))
+```
 
 ##### **自定义插件**
 

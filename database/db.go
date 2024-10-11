@@ -29,7 +29,6 @@ func init() {
 		}),
 	})
 	GLOBALDB.Use(dbresolver.Register(dbresolver.Config{
-		// use `db2` as sources, `db3`, `db4` as replicas
 		Sources:  []gorm.Dialector{mysql.Open(dsn)},
 		Replicas: []gorm.Dialector{mysql.Open(dsn2)},
 		// sources/replicas load balancing policy
@@ -37,7 +36,6 @@ func init() {
 		// print sources/replicas mode in logger
 		TraceResolverMode: true,
 	}).Register(dbresolver.Config{
-		// use `db2` as sources, `db3`, `db4` as replicas
 		Sources: []gorm.Dialector{mysql.Open(dsn2)},
 		//Replicas: []gorm.Dialector{mysql.Open(dsn2)},
 		// sources/replicas load balancing policy
