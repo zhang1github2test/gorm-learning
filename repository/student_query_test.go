@@ -12,6 +12,7 @@ func TestStudentDao_Create(t *testing.T) {
 	s := &model.Student{
 		ID:       100014,
 		Name:     "zhangshenglu",
+		Phone:    "18601774393",
 		Age:      18,
 		Birthday: &birthday,
 	}

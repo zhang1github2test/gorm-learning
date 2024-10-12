@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"github.com/zhang1github2test/gorm-learning/callback"
 	"github.com/zhang1github2test/gorm-learning/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -28,6 +29,7 @@ func init() {
 			Colorful:                  false,       // Disable color
 		}),
 	})
+	callback.Register(GLOBALDB)
 	GLOBALDB.Use(dbresolver.Register(dbresolver.Config{
 		Sources:  []gorm.Dialector{mysql.Open(dsn)},
 		Replicas: []gorm.Dialector{mysql.Open(dsn2)},
@@ -48,5 +50,4 @@ func init() {
 	}
 	sqlDB, err := GLOBALDB.DB()
 	fmt.Println(sqlDB.Stats())
-
 }
