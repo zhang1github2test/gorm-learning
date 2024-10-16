@@ -14,15 +14,3 @@ type Student struct {
 	CreatedAt    *time.Time `json:"created_at"`                                           // 创建时间（由GORM自动管理）
 	UpdatedAt    *time.Time `json:"updated_at"`                                           // 最后一次更新时间（由GORM自动管理）
 }
-
-//func (s *Student) Encrypt(db *gorm.DB) error {
-//	phone := s.Phone
-//	if len(phone) > 0 {
-//		str, err := callback.AesEncrypt([]byte(phone), []byte("0123456789123456"))
-//		if err != nil {
-//			log.Println("加密手机号码错误")
-//		}
-//		s.Phone = str
-//	}
-//	return nil
-//}

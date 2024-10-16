@@ -13,11 +13,7 @@ func Register(db *gorm.DB) {
 
 var DATA_KEY = []byte("0123456789123456")
 
-type DecryptCreate interface {
-	Decrypt(db *gorm.DB) error
-}
-
-// 只针对
+// Decrypt 针对查询操作对数据进行解密操作 解密结构体中添加了 encryption:"true" tag的字段
 func Decrypt(db *gorm.DB) {
 	if db.Error == nil && db.Statement.Schema != nil && !db.Statement.SkipHooks {
 		callMethod(db, func(value interface{}, tx *gorm.DB) (called bool) {

@@ -1281,26 +1281,158 @@ ORM 的上下文支持由 `WithContext` 方法启用，是一项强大的功能�
 
 ##### **自定义插件**
 
-##### **自定义 Logger**
+**Callbacks**
+
+​	**Callbacks（回调）** 是一个灵活且强大的机制，允许在特定数据库操作（如 `Create`、`Update`、`Delete` 等）前后执行一些自定义的逻辑。通过回调机制，你可以在 ORM 执行数据库操作的生命周期中插入额外的操作，比如日志记录、数据验证、自动填充字段等。对查询回来的字段进行解密操作
+
+解密的回调：
+
+```go
+package callback
+
+import (
+	"gorm.io/gorm"
+	"reflect"
+)
+
+// 注册回调
+func Register(db *gorm.DB) {
+	db.Callback().Query().After("gorm:after_query").Register("customer:decrypt_query", Decrypt)
+	db.Callback().Create().Before("gorm:before_create").Register("customer:encrypt_create", Encrypt)
+	db.Callback().Update().Before("gorm:before_update").Register("customer:encrypt_update", Encrypt)
+}
+
+var DATA_KEY = []byte("0123456789123456")
+
+//Decrypt 针对查询操作对数据进行解密操作 解密结构体中添加了 encryption:"true" tag的字段
+func Decrypt(db *gorm.DB) {
+	if db.Error == nil && db.Statement.Schema != nil && !db.Statement.SkipHooks {
+		callMethod(db, func(value interface{}, tx *gorm.DB) (called bool) {
+			reflectValue := reflect.ValueOf(value)
+			typeofRe := reflect.TypeOf(value)
+			if typeofRe.Kind() != reflect.Ptr {
+				called = false
+				return called
+			}
+			reflectValue = reflectValue.Elem()
+			typeofRe = typeofRe.Elem()
+
+			// Iterate over the fields
+			for i := 0; i < typeofRe.NumField(); i++ {
+				field := typeofRe.Field(i)
+
+				// Get the "encryption" tag
+				encryptionTag := field.Tag.Get("encryption")
+
+				// Check if the encryption tag is set to "true"
+				if encryptionTag == "true" {
+					ecryptStr := reflectValue.Field(i).String()
+					decrypt, err := AesDecrypt(ecryptStr, DATA_KEY)
+					if err != nil {
+						db.AddError(err)
+					}
+					reflectValue.Field(i).SetString(decrypt)
+				}
+			}
+			return called
+		})
+	}
+}
+
+```
+
+加密的回调
+
+```go
+package callback
+
+import (
+	"gorm.io/gorm"
+	"reflect"
+)
+
+// Encrypt 对新增和更新操作，加密添加了encryption:"true" tag的字段
+func Encrypt(db *gorm.DB) {
+	if db.Error == nil && db.Statement.Schema != nil && !db.Statement.SkipHooks {
+		callMethod(db, func(value interface{}, tx *gorm.DB) (called bool) {
+			reflectValue := reflect.ValueOf(value)
+			typeofRe := reflect.TypeOf(value)
+			if typeofRe.Kind() != reflect.Ptr {
+				called = false
+				return called
+			}
+			reflectValue = reflectValue.Elem()
+			typeofRe = typeofRe.Elem()
+
+			// Iterate over the fields
+			for i := 0; i < typeofRe.NumField(); i++ {
+				field := typeofRe.Field(i)
+
+				// Get the "encryption" tag
+				encryptionTag := field.Tag.Get("encryption")
+
+				// Check if the encryption tag is set to "true"
+				if encryptionTag == "true" {
+					ecryptStr := reflectValue.Field(i).String()
+					decrypt, err := AesEncrypt([]byte(ecryptStr), DATA_KEY)
+					if err != nil {
+						db.AddError(err)
+					}
+					reflectValue.Field(i).SetString(decrypt)
+				}
+			}
+			return called
+		})
+	}
+}
+```
+
+
+
+**Plugins**
+
+**Plugins** 是 GORM 提供的一个扩展机制，用于将新的功能集成到 GORM 中。通过插件机制，你可以向 GORM 增加新的行为或改变现有的行为，类似于在框架中加载扩展模块
+
+Plugins底层实际上也是依赖于Callbacks，它是一个或者多个Callbacks的集合。降低调用者使用多个CallBacks的难度，使其更加易于使用。
+
+把上面的加密及解密的回调修改为插件方式
+
+```go
+package plugin
+
+import (
+	"github.com/zhang1github2test/gorm-learning/callback"
+	"gorm.io/gorm"
+)
+
+type Encrypt struct {
+}
+
+func (encrypt *Encrypt) Name() string {
+	return "my_customize:encrypt_plugin"
+}
+func (encrypt *Encrypt) Initialize(db *gorm.DB) error {
+	callback.Register(db)
+	return nil
+}
+```
+
+注册插件：
+
+```go
+GLOBALDB.Use(&plugin.Encrypt{})
+```
 
 ---
 
-### 6. **性能优化**
-
-- **日志与调试**：使用 `db.Debug()` 查看 SQL 日志，调试查询。
-- **批量操作**：批量插入、更新与删除。
-- **连接池配置**：优化数据库连接池的使用。
-
----
-
-### 7. **实战项目**
+### 6. **实战项目**
 
 - **用户管理系统开发**：通过 GORM 实现用户增删改查功能。
 - **API 集成**：使用 Gin 框架集成 GORM，开发 RESTful API。
 
 
 
-### 8. **GORM Gen 自动代码生成**
+### 7. **GORM Gen 自动代码生成**
 
 #### 8.1 **GORM Gen 简介**
 

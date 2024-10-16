@@ -5,10 +5,7 @@ import (
 	"reflect"
 )
 
-type EncryptHook interface {
-	Encrypt(db *gorm.DB) error
-}
-
+// Encrypt 对新增和更新操作，加密添加了encryption:"true" tag的字段
 func Encrypt(db *gorm.DB) {
 	if db.Error == nil && db.Statement.Schema != nil && !db.Statement.SkipHooks {
 		callMethod(db, func(value interface{}, tx *gorm.DB) (called bool) {
